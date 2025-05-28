@@ -67,7 +67,7 @@ const App: React.FC = () => {
             </div>
             <div className="flex items-center">
               <i className="fas fa-won-sign w-6"></i>
-              <span>참가비: 50,000원</span>
+              <span>참가비: 50,000원(정원 100명)</span>
             </div>
           </div>
         </section>
