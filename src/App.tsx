@@ -1,8 +1,8 @@
 import React from "react";
 
 const instructorData = [
-  { name: "문동진", role: "퍼스널 브랜딩", img: "/mdj2.Png" },
-  { name: "서보찬", role: "퍼스널 브랜딩", img: "/sbc2.Png" },
+  { name: "문동진", role: "퍼스널 브랜딩", img: "/mdj2.png" },
+  { name: "서보찬", role: "퍼스널 브랜딩", img: "/sbc2.png" },
   { name: "이원주", role: "센터 창업", img: "/ewj2.png" },
   { name: "윤청구", role: "센터 창업", img: "/ycg2.png" },
 ];
