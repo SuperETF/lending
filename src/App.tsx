@@ -67,7 +67,7 @@ const App: React.FC = () => {
             </div>
             <div className="flex items-center">
               <i className="fas fa-won-sign w-6"></i>
-              <span>참가비: 치료사 50,000원 / 학부생 30,000원</span>
+              <span>참가비: 1부 30,000원(120명) / 2부 50,000원(선착순 80명)</span>
             </div>
           </div>
         </section>
