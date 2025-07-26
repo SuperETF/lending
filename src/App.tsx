@@ -6,14 +6,14 @@ const brands = [
     name: "유리한 클래스",
     description: "오래가는 건강한 성장을 만드는 클래스",
     image: "/CLASS.png",
-    url: "https://betterthanclass.com/",
+    url: "https://betterthanclass.vercel.app/",
   },
   {
     id: 1,
     name: "TO-DO",
     description: "오늘의 할 일을 내일의 건강으로",
     image: "/TODO.png",
-    url: "https://www.tododoto.com/",
+    url: "https://www.to-do.fit/about/",
   },
   {
     id: 2,
