@@ -29,7 +29,7 @@ const App: React.FC = () => {
             <div
               className="w-full overflow-hidden"
               style={{
-                height: "810px",         // ← 여기서 원하는 만큼 픽셀 단위로 자르세요!
+                height: "960px",         // ← 여기서 원하는 만큼 픽셀 단위로 자르세요!
               }}
             >
               <img
