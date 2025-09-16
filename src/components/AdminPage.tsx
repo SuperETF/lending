@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Calendar, Users, MapPin, Clock, Edit, Trash2, Eye } from 'lucide-react';
+import { Plus, Calendar, Users, MapPin, Clock, Trash2, Eye } from 'lucide-react';
 import { supabase, RunningSession, Participant } from '../lib/supabase';
 
 const AdminPage: React.FC = () => {

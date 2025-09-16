@@ -7,10 +7,7 @@ const HeroSection: React.FC = () => {
       {/* Background Image with Dark Overlay */}
       <div className="absolute inset-0 z-0">
         <div 
-          className="w-full h-full bg-cover bg-center bg-no-repeat"
-          style={{
-            backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.5)), url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800"><defs><linearGradient id="cityGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:%23111827;stop-opacity:1" /><stop offset="100%" style="stop-color:%23000000;stop-opacity:1" /></linearGradient></defs><rect width="1200" height="800" fill="url(%23cityGrad)"/><g fill="%23374151" opacity="0.3"><rect x="100" y="400" width="60" height="400"/><rect x="200" y="300" width="80" height="500"/><rect x="320" y="350" width="70" height="450"/><rect x="450" y="250" width="90" height="550"/><rect x="600" y="320" width="75" height="480"/><rect x="720" y="280" width="85" height="520"/><rect x="850" y="360" width="65" height="440"/><rect x="950" y="200" width="100" height="600"/></g></svg>')`
-          }}
+          className="w-full h-full bg-gradient-to-br from-gray-900 via-black to-gray-800"
         />
       </div>
 
@@ -18,22 +15,23 @@ const HeroSection: React.FC = () => {
       <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
         {/* Logo */}
         <div className="mb-8">
-          <div className="inline-flex items-center justify-center w-32 h-32 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full mb-6">
-            <div className="text-center">
-              <div className="text-white text-2xl font-bold">FRC</div>
-              <div className="text-white text-sm font-medium">Seoul</div>
-            </div>
+          <div className="inline-flex items-center justify-center w-48 h-48 mb-6">
+            <img 
+              src="/FRC.png" 
+              alt="FREE RUNNING CREW Seoul Logo" 
+              className="w-full h-full object-contain"
+            />
           </div>
         </div>
 
         {/* Main Title */}
-        <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
-          <span className="block">FITNESS</span>
+        <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
+          <span className="block">FREE</span>
           <span className="block bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
             RUNNING
           </span>
           <span className="block">CREW</span>
-          <span className="block text-3xl md:text-4xl text-gray-300 mt-2">Seoul</span>
+          <span className="block text-2xl md:text-3xl text-gray-300 mt-2">Seoul</span>
         </h1>
 
         {/* Subtitle */}

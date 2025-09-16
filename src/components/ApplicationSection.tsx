@@ -1,33 +1,58 @@
 import React, { useState } from 'react';
-import { Send, Check, AlertCircle, User, Phone, Mail, Shield } from 'lucide-react';
+import { Send, Check, AlertCircle, User, Phone, Calendar, MapPin, Clock, Users, MessageCircle, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface FormData {
   name: string;
   phone: string;
-  email: string;
-  emergencyContact: string;
-  emergencyPhone: string;
   medicalConditions: string;
-  privacyConsent: boolean;
-  marketingConsent: boolean;
+}
+
+interface RunningSession {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  time: string;
+  location: string;
+  max_participants: number;
+  current_participants?: number;
 }
 
 const ApplicationSection: React.FC = () => {
+  const [sessions, setSessions] = useState<RunningSession[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedSessionForModal, setSelectedSessionForModal] = useState<RunningSession | null>(null);
   const [formData, setFormData] = useState<FormData>({
     name: '',
     phone: '',
-    email: '',
-    emergencyContact: '',
-    emergencyPhone: '',
     medicalConditions: '',
-    privacyConsent: false,
-    marketingConsent: false,
   });
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+
+  React.useEffect(() => {
+    fetchSessions();
+  }, []);
+
+  const fetchSessions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('running_sessions')
+        .select('*')
+        .gte('date', new Date().toISOString().split('T')[0])
+        .order('date', { ascending: true });
+      
+      if (error) throw error;
+      setSessions(data || []);
+    } catch (error) {
+      console.error('Error fetching sessions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -35,6 +60,23 @@ const ApplicationSection: React.FC = () => {
       ...prev,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
     }));
+  };
+
+  const openModal = (session: RunningSession) => {
+    setSelectedSessionForModal(session);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedSessionForModal(null);
+    setFormData({
+      name: '',
+      phone: '',
+      medicalConditions: '',
+    });
+    setSubmitStatus('idle');
+    setErrorMessage('');
   };
 
   const validateForm = (): boolean => {
@@ -46,20 +88,8 @@ const ApplicationSection: React.FC = () => {
       setErrorMessage('연락처를 입력해주세요.');
       return false;
     }
-    if (!formData.email.trim() || !formData.email.includes('@')) {
-      setErrorMessage('올바른 이메일을 입력해주세요.');
-      return false;
-    }
-    if (!formData.emergencyContact.trim()) {
-      setErrorMessage('비상연락처 이름을 입력해주세요.');
-      return false;
-    }
-    if (!formData.emergencyPhone.trim()) {
-      setErrorMessage('비상연락처 번호를 입력해주세요.');
-      return false;
-    }
-    if (!formData.privacyConsent) {
-      setErrorMessage('개인정보 처리방침에 동의해주세요.');
+    if (!selectedSessionForModal) {
+      setErrorMessage('세션 정보가 없습니다.');
       return false;
     }
     return true;
@@ -82,14 +112,15 @@ const ApplicationSection: React.FC = () => {
         .from('participants')
         .insert([
           {
+            session_id: selectedSessionForModal?.id,
             name: formData.name,
             phone: formData.phone,
-            email: formData.email,
-            emergency_contact: formData.emergencyContact,
-            emergency_phone: formData.emergencyPhone,
+            email: '',
+            emergency_contact: '',
+            emergency_phone: '',
             medical_conditions: formData.medicalConditions,
-            privacy_consent: formData.privacyConsent,
-            marketing_consent: formData.marketingConsent,
+            privacy_consent: true,
+            marketing_consent: false,
           }
         ]);
 
@@ -99,12 +130,7 @@ const ApplicationSection: React.FC = () => {
       setFormData({
         name: '',
         phone: '',
-        email: '',
-        emergencyContact: '',
-        emergencyPhone: '',
         medicalConditions: '',
-        privacyConsent: false,
-        marketingConsent: false,
       });
     } catch (error) {
       console.error('Error submitting application:', error);
@@ -117,200 +143,213 @@ const ApplicationSection: React.FC = () => {
 
   return (
     <section id="application" className="py-20 bg-gradient-to-b from-gray-900 to-black">
-      <div className="max-w-4xl mx-auto px-6">
+      <div className="max-w-6xl mx-auto px-6">
         {/* Section Header */}
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-            <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">FRC</span> 신청하기
+            <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">FREE RUNNING CREW</span> 러닝 세션
           </h2>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-            함께 달릴 준비가 되셨나요? 아래 정보를 입력해주시면 곧 연락드리겠습니다.
+            참여하고 싶은 러닝 세션을 선택해보세요.
           </p>
           <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-600 mx-auto mt-6"></div>
         </div>
 
-        {/* Application Form */}
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-8 md:p-12 border border-gray-700/50">
-          {submitStatus === 'success' ? (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Check className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold text-white mb-4">신청이 완료되었습니다!</h3>
-              <p className="text-gray-300 mb-6">
-                곧 연락드려 자세한 안내를 도와드리겠습니다. 감사합니다!
-              </p>
-              <button
-                onClick={() => setSubmitStatus('idle')}
-                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg transition-all duration-300"
-              >
-                다시 신청하기
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Personal Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-white font-medium mb-2">
-                    <User className="w-4 h-4 inline mr-2" />
-                    이름 *
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none transition-colors"
-                    placeholder="홍길동"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-white font-medium mb-2">
-                    <Phone className="w-4 h-4 inline mr-2" />
-                    연락처 *
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none transition-colors"
-                    placeholder="010-1234-5678"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-white font-medium mb-2">
-                  <Mail className="w-4 h-4 inline mr-2" />
-                  이메일 *
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none transition-colors"
-                  placeholder="example@email.com"
-                  required
-                />
-              </div>
-
-              {/* Emergency Contact */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-white font-medium mb-2">
-                    비상연락처 이름 *
-                  </label>
-                  <input
-                    type="text"
-                    name="emergencyContact"
-                    value={formData.emergencyContact}
-                    onChange={handleInputChange}
-                    className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none transition-colors"
-                    placeholder="가족 또는 지인"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-white font-medium mb-2">
-                    비상연락처 번호 *
-                  </label>
-                  <input
-                    type="tel"
-                    name="emergencyPhone"
-                    value={formData.emergencyPhone}
-                    onChange={handleInputChange}
-                    className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none transition-colors"
-                    placeholder="010-1234-5678"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Medical Conditions */}
-              <div>
-                <label className="block text-white font-medium mb-2">
-                  건강상태 및 특이사항
-                </label>
-                <textarea
-                  name="medicalConditions"
-                  value={formData.medicalConditions}
-                  onChange={handleInputChange}
-                  rows={4}
-                  className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none transition-colors resize-none"
-                  placeholder="운동 시 주의할 점이나 건강상태를 알려주세요 (선택사항)"
-                />
-              </div>
-
-              {/* Consent Checkboxes */}
-              <div className="space-y-4 pt-4 border-t border-gray-600">
-                <div className="flex items-start space-x-3">
-                  <input
-                    type="checkbox"
-                    name="privacyConsent"
-                    checked={formData.privacyConsent}
-                    onChange={handleInputChange}
-                    className="mt-1 w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
-                    required
-                  />
-                  <label className="text-gray-300 text-sm">
-                    <Shield className="w-4 h-4 inline mr-1" />
-                    개인정보 수집 및 이용에 동의합니다. * (필수)
-                    <span className="block text-xs text-gray-400 mt-1">
-                      수집목적: 러닝 크루 참여 관리 및 안전한 운동 진행을 위한 연락
-                    </span>
-                  </label>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <input
-                    type="checkbox"
-                    name="marketingConsent"
-                    checked={formData.marketingConsent}
-                    onChange={handleInputChange}
-                    className="mt-1 w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
-                  />
-                  <label className="text-gray-300 text-sm">
-                    마케팅 정보 수신에 동의합니다. (선택)
-                    <span className="block text-xs text-gray-400 mt-1">
-                      새로운 프로그램 및 이벤트 정보를 받아보실 수 있습니다.
-                    </span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Error Message */}
-              {submitStatus === 'error' && errorMessage && (
-                <div className="flex items-center space-x-2 text-red-400 bg-red-900/20 border border-red-500/30 rounded-lg p-3">
-                  <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                  <span>{errorMessage}</span>
-                </div>
-              )}
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-semibold py-4 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? (
-                  <span className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    신청 중...
-                  </span>
-                ) : (
-                  <span className="flex items-center justify-center">
-                    <Send className="w-5 h-5 mr-2" />
+        {/* Running Sessions Grid */}
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+            <p className="text-gray-400 mt-4 text-lg">러닝 세션을 불러오는 중...</p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+              {sessions.map((session) => (
+                <div key={session.id} className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50 hover:border-blue-500/50 transition-all duration-300 transform hover:scale-105">
+                  <div className="mb-4">
+                    <h3 className="text-xl font-bold text-white mb-2">{session.title}</h3>
+                    <p className="text-gray-300 text-sm mb-4 line-clamp-3">{session.description}</p>
+                  </div>
+                  
+                  <div className="space-y-3 mb-6">
+                    <div className="flex items-center text-gray-300">
+                      <Calendar className="w-4 h-4 mr-2 text-blue-400" />
+                      <span className="text-sm">{session.date}</span>
+                    </div>
+                    <div className="flex items-center text-gray-300">
+                      <Clock className="w-4 h-4 mr-2 text-blue-400" />
+                      <span className="text-sm">{session.time}</span>
+                    </div>
+                    <div className="flex items-center text-gray-300">
+                      <MapPin className="w-4 h-4 mr-2 text-blue-400" />
+                      <span className="text-sm">{session.location}</span>
+                    </div>
+                    <div className="flex items-center text-gray-300">
+                      <Users className="w-4 h-4 mr-2 text-blue-400" />
+                      <span className="text-sm">최대 {session.max_participants}명</span>
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={() => openModal(session)}
+                    className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300"
+                  >
                     신청하기
-                  </span>
-                )}
-              </button>
-            </form>
-          )}
-        </div>
+                  </button>
+                </div>
+              ))}
+            </div>
+            
+            {/* KakaoTalk Channel Section */}
+            <div className="bg-yellow-500/10 backdrop-blur-sm rounded-2xl p-8 border border-yellow-500/30 text-center">
+              <div className="mb-6">
+                <MessageCircle className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
+                <h3 className="text-2xl font-bold text-white mb-2">카카오톡 채널 입장</h3>
+                <p className="text-gray-300">
+                  FREE RUNNING CREW 카카오톡 채널에서 실시간 소식과 추가 정보를 받아보세요!
+                </p>
+              </div>
+              <a
+                href="https://pf.kakao.com/_your_channel_id"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center bg-yellow-500 hover:bg-yellow-600 text-black font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105"
+              >
+                <MessageCircle className="w-5 h-5 mr-2" />
+                카카오톡 채널 입장하기
+              </a>
+            </div>
+          </>
+        )}
+        
+        {/* Application Modal */}
+        {isModalOpen && selectedSessionForModal && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-gray-800 rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto border border-gray-700">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-bold text-white">러닝 세션 신청</h3>
+                <button
+                  onClick={closeModal}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              {/* Selected Session Info */}
+              <div className="bg-gray-700/50 rounded-lg p-4 mb-6">
+                <h4 className="font-semibold text-white mb-2">{selectedSessionForModal.title}</h4>
+                <div className="space-y-2 text-sm text-gray-300">
+                  <div className="flex items-center">
+                    <Calendar className="w-4 h-4 mr-2" />
+                    {selectedSessionForModal.date} {selectedSessionForModal.time}
+                  </div>
+                  <div className="flex items-center">
+                    <MapPin className="w-4 h-4 mr-2" />
+                    {selectedSessionForModal.location}
+                  </div>
+                </div>
+              </div>
+              
+              {submitStatus === 'success' ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Check className="w-8 h-8 text-white" />
+                  </div>
+                  <h4 className="text-xl font-bold text-white mb-4">신청이 완료되었습니다!</h4>
+                  <p className="text-gray-300 mb-6">
+                    선택하신 세션에 대한 자세한 안내를 곧 연락드리겠습니다.
+                  </p>
+                  <button
+                    onClick={closeModal}
+                    className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg transition-all duration-300"
+                  >
+                    확인
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div>
+                    <label className="block text-white font-medium mb-2">
+                      <User className="w-4 h-4 inline mr-2" />
+                      이름 *
+                    </label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none transition-colors"
+                      placeholder="홍길동"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-white font-medium mb-2">
+                      <Phone className="w-4 h-4 inline mr-2" />
+                      연락처 *
+                    </label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none transition-colors"
+                      placeholder="010-1234-5678"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-white font-medium mb-2">
+                      특이사항
+                    </label>
+                    <textarea
+                      name="medicalConditions"
+                      value={formData.medicalConditions}
+                      onChange={handleInputChange}
+                      rows={3}
+                      className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none transition-colors resize-none"
+                      placeholder="운동 시 주의할 점이나 특별히 알려주실 내용 (선택사항)"
+                    />
+                  </div>
+                  
+                  {submitStatus === 'error' && errorMessage && (
+                    <div className="flex items-center space-x-2 text-red-400 bg-red-900/20 border border-red-500/30 rounded-lg p-3">
+                      <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                      <span className="text-sm">{errorMessage}</span>
+                    </div>
+                  )}
+                  
+                  <div className="flex space-x-3">
+                    <button
+                      type="button"
+                      onClick={closeModal}
+                      className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300"
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300"
+                    >
+                      {isSubmitting ? (
+                        <span className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          신청 중...
+                        </span>
+                      ) : (
+                        '신청하기'
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );
