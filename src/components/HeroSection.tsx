@@ -1,15 +1,7 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { MapPin, Instagram, Heart } from 'lucide-react';
 
 const HeroSection: React.FC = () => {
-  useEffect(() => {
-    console.log('🚀 HeroSection 마운트됨');
-    console.log(`🌐 현재 환경: ${process.env.NODE_ENV}`);
-    console.log(`📂 PUBLIC_URL: ${process.env.PUBLIC_URL || 'undefined'}`);
-    console.log(`🔗 현재 위치: ${window.location.href}`);
-    console.log(`📱 User Agent: ${navigator.userAgent}`);
-    console.log(`📊 화면 크기: ${window.innerWidth}x${window.innerHeight}`);
-  }, []);
   const growers = [
     {
       id: 1,
@@ -60,16 +52,6 @@ const HeroSection: React.FC = () => {
               src="/FRC.png" 
               alt="FREE RUNNING CREW Seoul Logo" 
               className="w-full h-full object-contain"
-              onLoad={() => {
-                console.log(`✅ FRC 로고 로드 성공: /FRC.png`);
-                console.log(`🌐 현재 URL: ${window.location.href}`);
-              }}
-              onError={(e) => {
-                console.error(`❌ FRC 로고 로드 실패: /FRC.png`);
-                console.error(`🌐 현재 URL: ${window.location.href}`);
-                const target = e.target as HTMLImageElement;
-                console.error(`🎯 실제 src 속성: ${target.src}`);
-              }}
             />
           </div>
         </div>
@@ -129,25 +111,8 @@ const HeroSection: React.FC = () => {
                   src={grower.image}
                   alt={`${grower.name} 프로필`}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                  onLoad={() => {
-                    console.log(`✅ 그로워 이미지 로드 성공: ${grower.image}`);
-                    console.log(`📱 User Agent: ${navigator.userAgent}`);
-                    console.log(`🌐 현재 URL: ${window.location.href}`);
-                    console.log(`📂 PUBLIC_URL: ${process.env.PUBLIC_URL || 'undefined'}`);
-                  }}
                   onError={(e) => {
-                    console.error(`❌ 그로워 이미지 로드 실패: ${grower.image}`);
-                    console.error(`📱 User Agent: ${navigator.userAgent}`);
-                    console.error(`🌐 현재 URL: ${window.location.href}`);
-                    console.error(`📂 PUBLIC_URL: ${process.env.PUBLIC_URL || 'undefined'}`);
-                    console.error(`🔗 시도한 이미지 URL: ${grower.image}`);
-                    
-                    // 실제 요청된 URL 확인
                     const target = e.target as HTMLImageElement;
-                    console.error(`🎯 실제 src 속성: ${target.src}`);
-                    console.error(`📊 이미지 naturalWidth: ${target.naturalWidth}`);
-                    console.error(`📊 이미지 naturalHeight: ${target.naturalHeight}`);
-                    
                     target.style.display = 'none';
                     target.parentElement!.classList.add('bg-gradient-to-br', 'from-blue-500/20', 'to-purple-600/20');
                   }}

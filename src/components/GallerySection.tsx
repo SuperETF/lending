@@ -131,17 +131,9 @@ const GallerySection: React.FC = () => {
                   src={image.src}
                   alt={image.alt}
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  onLoad={() => {
-                    console.log(`✅ 갤러리 이미지 로드 성공: ${image.src}`);
-                  }}
                   onError={(e) => {
-                    console.error(`❌ 갤러리 이미지 로드 실패: ${image.src}`);
-                    console.error(`🌐 현재 URL: ${window.location.href}`);
-                    console.error(`📱 User Agent: ${navigator.userAgent}`);
-                    
                     // 이미지 로드 실패 시 대체 이미지 또는 그라데이션 배경
                     const target = e.target as HTMLImageElement;
-                    console.error(`🎯 실제 src 속성: ${target.src}`);
                     target.style.display = 'none';
                     target.parentElement!.classList.add('bg-gradient-to-br', 'from-blue-500/20', 'to-purple-600/20');
                   }}
