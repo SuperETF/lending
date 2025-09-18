@@ -34,8 +34,6 @@ const ApplicationSection: React.FC = () => {
 
   const fetchSessions = async () => {
     try {
-      console.log('🔄 홈페이지에서 세션 조회 중...');
-      console.log('오늘 날짜:', new Date().toISOString().split('T')[0]);
       
       const { data, error } = await supabase
         .from('running_sessions')
@@ -44,8 +42,6 @@ const ApplicationSection: React.FC = () => {
         // .gte('date', new Date().toISOString().split('T')[0])
         .order('date', { ascending: true });
       
-      console.log('조회된 세션 데이터:', data);
-      console.log('조회 오류:', error);
       
       if (error) throw error;
       setSessions(data || []);

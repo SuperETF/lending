@@ -113,11 +113,6 @@ const AdminPage: React.FC = () => {
     if (!editingSession) return;
     
     try {
-      console.log('🔄 세션 수정 중...', {
-        id: editingSession.id,
-        title: newSession.title,
-        image_url: newSession.image_url
-      });
       
       const { error } = await supabase
         .from('running_sessions')
@@ -135,7 +130,6 @@ const AdminPage: React.FC = () => {
 
       if (error) throw error;
       
-      console.log('✅ 세션 수정 완료!');
 
       setNewSession({
         title: '',
@@ -179,19 +173,15 @@ const AdminPage: React.FC = () => {
   const deleteSession = async (sessionId: string) => {
     if (!window.confirm('정말로 이 세션을 삭제하시겠습니까?\n연결된 참여자 정보와 이미지도 함께 삭제됩니다.')) return;
 
-    console.log('🗑️ 세션 삭제 시작:', sessionId);
 
     try {
       // 1. 먼저 세션 정보 조회 (이미지 URL 확인용)
-      console.log('1️⃣ 세션 정보 조회 중...');
       const { data: sessionData, error: fetchError } = await supabase
         .from('running_sessions')
         .select('*')
         .eq('id', sessionId)
         .single();
 
-      console.log('세션 데이터:', sessionData);
-      console.log('조회 오류:', fetchError);
 
       if (fetchError) {
         console.error('Error fetching session:', fetchError);
@@ -200,13 +190,11 @@ const AdminPage: React.FC = () => {
       }
 
       // 2. 세션에 연결된 참여자들 삭제
-      console.log('2️⃣ 참여자 삭제 중...');
       const { error: participantsError } = await supabase
         .from('participants')
         .delete()
         .eq('session_id', sessionId);
 
-      console.log('참여자 삭제 오류:', participantsError);
 
       if (participantsError) {
         console.error('Error deleting participants:', participantsError);
@@ -235,13 +223,11 @@ const AdminPage: React.FC = () => {
       }
 
       // 4. 마지막으로 세션 삭제
-      console.log('4️⃣ 세션 삭제 중...');
       const { error: sessionError } = await supabase
         .from('running_sessions')
         .delete()
         .eq('id', sessionId);
 
-      console.log('세션 삭제 오류:', sessionError);
 
       if (sessionError) {
         console.error('Error deleting session:', sessionError);
@@ -250,7 +236,6 @@ const AdminPage: React.FC = () => {
       }
 
       // 5. 성공적으로 삭제 완료
-      console.log('✅ 세션 삭제 완료!');
       alert('세션이 성공적으로 삭제되었습니다.');
       fetchSessions();
       fetchParticipants(); // 참여자 목록도 새로고침
@@ -403,9 +388,7 @@ const AdminPage: React.FC = () => {
       // 큰 이미지는 자동 압축
       let processedFile = file;
       if (file.size > 2 * 1024 * 1024) { // 2MB 이상이면 압축
-        console.log('🔄 이미지 압축 중...', `${(file.size / 1024 / 1024).toFixed(2)}MB`);
         processedFile = await compressImage(file);
-        console.log('✅ 이미지 압축 완료:', `${(processedFile.size / 1024 / 1024).toFixed(2)}MB`);
       }
       
       const imageUrl = await uploadImage(processedFile);
@@ -518,14 +501,10 @@ const AdminPage: React.FC = () => {
   };
 
   const selectTimeSuggestion = (timeValue: string) => {
-    console.log('시간 선택:', timeValue); // 디버깅용
-    console.log('현재 newSession.time:', newSession.time); // 디버깅용
-    
-    setNewSession(prev => {
-      const updated = {...prev, time: timeValue};
-      console.log('업데이트된 시간:', updated.time); // 디버깅용
-      return updated;
-    });
+    setNewSession(prev => ({
+      ...prev, 
+      time: timeValue
+    }));
     
     setTimeInput('');
     setShowTimeSuggestions(false);
