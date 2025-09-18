@@ -15,8 +15,10 @@ export interface RunningSession {
   location: string
   max_participants: number
   current_participants: number
+  registration_open_date: string
+  image_url?: string
   created_at: string
-  created_by: string
+  created_by?: string
 }
 
 export interface Participant {

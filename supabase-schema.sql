@@ -18,8 +18,10 @@ CREATE TABLE running_sessions (
   location VARCHAR(300) NOT NULL,
   max_participants INTEGER NOT NULL DEFAULT 10,
   current_participants INTEGER NOT NULL DEFAULT 0,
+  registration_open_date TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+  image_url TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  created_by UUID REFERENCES admins(id)
+  created_by VARCHAR(100) DEFAULT 'admin'
 );
 
 -- 참여자 테이블
@@ -71,8 +73,6 @@ INSERT INTO admins (email, name) VALUES
 INSERT INTO running_sessions (title, description, date, time, location, max_participants, created_by) 
 VALUES 
 ('초보자 러닝 클래스', '러닝을 처음 시작하는 분들을 위한 기초 클래스입니다. 물리치료사가 직접 지도합니다.', 
- CURRENT_DATE + INTERVAL '7 days', '19:00:00', '한강공원 반포지구', 15, 
- (SELECT id FROM admins WHERE email = 'admin@frc.com')),
+ CURRENT_DATE + INTERVAL '7 days', '19:00:00', '한강공원 반포지구', 15, 'admin'),
 ('중급자 러닝 그룹', '어느 정도 러닝 경험이 있는 분들을 위한 중급 클래스입니다.', 
- CURRENT_DATE + INTERVAL '10 days', '18:30:00', '올림픽공원', 12, 
- (SELECT id FROM admins WHERE email = 'admin@frc.com'));
+ CURRENT_DATE + INTERVAL '10 days', '18:30:00', '올림픽공원', 12, 'admin');

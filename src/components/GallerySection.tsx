@@ -1,43 +1,98 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Camera, Heart, Users, Trophy } from 'lucide-react';
 
 const GallerySection: React.FC = () => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
   // 실제 이미지 경로들 (public 폴더의 이미지들 사용)
   const galleryImages = [
     {
-      src: '/1.png',
+      src: '/11.jpg',
       alt: 'FREE RUNNING CREW 활동 사진 1',
       category: 'running'
     },
     {
-      src: '/2.png', 
+      src: '/22.png', 
       alt: 'FREE RUNNING CREW 활동 사진 2',
       category: 'group'
     },
     {
-      src: '/3.png',
+      src: '/33.png',
       alt: 'FREE RUNNING CREW 활동 사진 3', 
       category: 'training'
     },
     {
-      src: '/4.png',
+      src: '/44.png',
       alt: 'FREE RUNNING CREW 활동 사진 4',
       category: 'running'
     },
     {
-      src: '/5.png',
+      src: '/55.png',
       alt: 'FREE RUNNING CREW 활동 사진 5',
       category: 'group'
     },
     {
-      src: '/6.png',
+      src: '/66.png',
       alt: 'FREE RUNNING CREW 활동 사진 6',
       category: 'training'
     }
   ];
 
+  // 자동 스크롤 기능
+  useEffect(() => {
+    const scrollContainer = scrollRef.current;
+    if (!scrollContainer) return;
+
+    let scrollDirection = 1; // 1: 오른쪽, -1: 왼쪽
+    const scrollSpeed = 0.5; // 스크롤 속도 (픽셀/프레임)
+
+    const autoScroll = () => {
+      if (!scrollContainer) return;
+
+      const maxScrollLeft = scrollContainer.scrollWidth - scrollContainer.clientWidth;
+      
+      // 스크롤 방향 변경 조건
+      if (scrollContainer.scrollLeft >= maxScrollLeft) {
+        scrollDirection = -1;
+      } else if (scrollContainer.scrollLeft <= 0) {
+        scrollDirection = 1;
+      }
+
+      // 스크롤 실행
+      scrollContainer.scrollLeft += scrollSpeed * scrollDirection;
+    };
+
+    const intervalId = setInterval(autoScroll, 16); // ~60fps
+
+    // 마우스 호버 시 자동 스크롤 정지
+    const handleMouseEnter = () => clearInterval(intervalId);
+    const handleMouseLeave = () => {
+      clearInterval(intervalId);
+      const newIntervalId = setInterval(autoScroll, 16);
+      return newIntervalId;
+    };
+
+    scrollContainer.addEventListener('mouseenter', handleMouseEnter);
+    scrollContainer.addEventListener('mouseleave', () => {
+      const newIntervalId = setInterval(autoScroll, 16);
+    });
+
+    return () => {
+      clearInterval(intervalId);
+      scrollContainer.removeEventListener('mouseenter', handleMouseEnter);
+      scrollContainer.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, []);
+
   return (
     <section className="py-20 bg-gradient-to-b from-black to-gray-900">
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+          }
+        `
+      }} />
       <div className="max-w-7xl mx-auto px-6">
         {/* Section Header */}
         <div className="text-center mb-16">
@@ -50,22 +105,28 @@ const GallerySection: React.FC = () => {
             </span>
           </h2>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-            FREE RUNNING CREW와 함께한 특별한 순간들을 만나보세요
+            FRC와 함께한 특별한 순간들
           </p>
           <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-600 mx-auto mt-6"></div>
         </div>
 
-        {/* Gallery Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+        {/* Horizontal Scrolling Gallery */}
+        <div 
+          ref={scrollRef}
+          className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide"
+          style={{ 
+            scrollbarWidth: 'none', 
+            msOverflowStyle: 'none'
+          }}
+        >
           {galleryImages.map((image, index) => (
             <div
               key={index}
-              className={`relative group overflow-hidden rounded-2xl bg-gray-800 border border-gray-700/50 hover:border-blue-500/50 transition-all duration-500 transform hover:scale-105 ${
-                index === 0 ? 'md:col-span-2 md:row-span-2' : ''
-              } ${index === 3 ? 'lg:col-span-2' : ''}`}
+              className="relative group overflow-hidden rounded-2xl bg-gray-800 border border-gray-700/50 hover:border-blue-500/50 transition-all duration-500 transform hover:scale-105 flex-shrink-0"
+              style={{ width: '320px' }}
             >
               {/* Image Container */}
-              <div className={`relative ${index === 0 ? 'h-96 md:h-full' : 'h-64'} overflow-hidden`}>
+              <div className="relative h-80 overflow-hidden">
                 <img
                   src={image.src}
                   alt={image.alt}

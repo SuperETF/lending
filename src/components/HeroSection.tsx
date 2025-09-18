@@ -1,8 +1,40 @@
 import React from 'react';
-import { Play } from 'lucide-react';
+import { Play, MapPin, Instagram, Award, Clock, Heart } from 'lucide-react';
 
 const HeroSection: React.FC = () => {
+  const growers = [
+    {
+      id: 1,
+      name: "서보찬",
+      title: "FRC GROWER",
+      specialty: "물리치료사",
+      experience: "5년",
+      description: "임상 경험을 바탕으로 안전하고 효과적인 러닝 프로그램을 설계합니다. 부상 예방과 퍼포먼스 향상에 특화된 전문가입니다.",
+      instagram: "@borunnn_fit",
+      achievements: ["물리치료사 면허","FRC.seoul 크루장", "20만 팔로워 크리에이터"],
+      image: "/1.png"
+    },
+    {
+      id: 2,
+      name: "채정욱",
+      title: "FRC GROWER",
+      specialty: "물리치료사",
+      experience: "6년",
+      description: "운동 초보자분들에게 개인별 맞춤형 트레이닝과 프로그램을 제공합니다. 지속 가능한 러닝 라이프를 만들어갑니다.",
+      instagram: "@chae_dev",
+      achievements: ["물리치료사 면허", "통증, 교정 운동 17만 크리에이터", "파브의 통증, 교정 운동 저자"],
+      image: "/2.png"
+    }
+  ];
+
+  const handleInstagramClick = (instagram: string) => {
+    const instagramUrl = `https://instagram.com/${instagram.replace('@', '')}`;
+    window.open(instagramUrl, '_blank', 'noopener,noreferrer');
+  };
+
   return (
+    <>
+    {/* Hero Section */}
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background Image with Dark Overlay */}
       <div className="absolute inset-0 z-0">
@@ -15,7 +47,7 @@ const HeroSection: React.FC = () => {
       <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
         {/* Logo */}
         <div className="mb-8">
-          <div className="inline-flex items-center justify-center w-48 h-48 mb-6">
+          <div className="inline-flex items-center justify-center w-64 h-64 mb-6 animate-fade-in-up opacity-0" style={{animationDelay: '0.2s', animationFillMode: 'forwards', animationDuration: '1.2s'}}>
             <img 
               src="/FRC.png" 
               alt="FREE RUNNING CREW Seoul Logo" 
@@ -26,41 +58,22 @@ const HeroSection: React.FC = () => {
 
         {/* Main Title */}
         <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
-          <span className="block">FREE</span>
-          <span className="block bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-            RUNNING
+          <span className="block animate-fade-in-up opacity-0" style={{animationDelay: '0.5s', animationFillMode: 'forwards'}}>
+            <span className="bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent hover:animate-pulse transition-all duration-300">RUN</span> 
+            <span className="bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent ml-4 animate-shimmer">FREE</span>
           </span>
-          <span className="block">CREW</span>
-          <span className="block text-2xl md:text-3xl text-gray-300 mt-2">Seoul</span>
+          <span className="block animate-fade-in-up opacity-0" style={{animationDelay: '1s', animationFillMode: 'forwards'}}>
+            <span className="bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent hover:animate-pulse transition-all duration-300">RUN</span> 
+            <span className="bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent ml-4 animate-shimmer">STRONG</span>
+          </span>
+          <span className="block text-2xl md:text-3xl mt-16 flex items-center justify-center gap-2 animate-fade-in-up opacity-0" style={{animationDelay: '1.8s', animationFillMode: 'forwards'}}>
+            <MapPin className="w-6 h-6 md:w-8 md:h-8 text-blue-400 animate-bounce" />
+            <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">Seoul</span>
+          </span>
         </h1>
 
-        {/* Subtitle */}
-        <p className="text-xl md:text-2xl text-gray-300 mb-8 leading-relaxed">
-          물리치료사와 함께하는 전문적인 러닝 경험
-        </p>
 
-        {/* CTA Button */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <button 
-            onClick={() => {
-              const applicationSection = document.getElementById('application');
-              applicationSection?.scrollIntoView({ behavior: 'smooth' });
-            }}
-            className="group bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-4 rounded-full text-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
-          >
-            <span className="flex items-center gap-2">
-              <Play className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              지금 시작하기
-            </span>
-          </button>
-        </div>
 
-        {/* Scroll Indicator */}
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
-          <div className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center">
-            <div className="w-1 h-3 bg-white/50 rounded-full mt-2 animate-pulse"></div>
-          </div>
-        </div>
       </div>
 
       {/* Floating Elements */}
@@ -68,6 +81,98 @@ const HeroSection: React.FC = () => {
       <div className="absolute top-40 right-20 w-3 h-3 bg-purple-400 rounded-full animate-pulse opacity-40 animation-delay-1000"></div>
       <div className="absolute bottom-40 left-20 w-2 h-2 bg-blue-300 rounded-full animate-pulse opacity-50 animation-delay-2000"></div>
     </section>
+
+    {/* Grower Section */}
+    <section className="py-20 bg-gradient-to-b from-gray-900 to-black">
+      <div className="max-w-6xl mx-auto px-6">
+        {/* Section Header */}
+        <div className="text-center mb-16">
+          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+            <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+              FRC GROWER
+            </span>
+          </h2>
+          <p className="text-xl text-gray-300 max-w-2xl mx-auto">
+          스포츠가 즐거워질 수 있도록 그로워가 여러분들을 도와드립니다.
+          </p>
+          <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-600 mx-auto mt-6"></div>
+        </div>
+
+        {/* Growers Grid */}
+        <div className="flex flex-col lg:flex-row justify-center items-center gap-12 max-w-4xl mx-auto">
+          {growers.map((grower) => (
+            <div 
+              key={grower.id}
+              className="group bg-gray-800/50 backdrop-blur-sm rounded-2xl overflow-hidden border border-gray-700/50 hover:border-blue-500/50 transition-all duration-500 transform hover:scale-105 w-full max-w-sm"
+            >
+              {/* Profile Image - Takes up half of the card */}
+              <div className="relative h-64 overflow-hidden">
+                <img
+                  src={grower.image}
+                  alt={`${grower.name} 프로필`}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    target.parentElement!.classList.add('bg-gradient-to-br', 'from-blue-500/20', 'to-purple-600/20', 'flex', 'items-center', 'justify-center');
+                    target.parentElement!.innerHTML = '<div class="w-20 h-20 text-blue-400"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" /></svg></div>';
+                  }}
+                />
+                {/* Gradient Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-gray-800/80 via-transparent to-transparent"></div>
+              </div>
+
+              {/* Content Section - Takes up the other half */}
+              <div className="p-8">
+                {/* Profile Info */}
+                <div className="mb-6">
+                  <h3 className="text-2xl font-bold text-white mb-2">{grower.name}</h3>
+                  <p className="text-blue-400 font-semibold mb-1">{grower.title}</p>
+                  <p className="text-gray-300">{grower.specialty}</p>
+                </div>
+
+                {/* Description */}
+                <p className="text-gray-300 leading-relaxed mb-6">
+                  {grower.description}
+                </p>
+
+                {/* Achievements */}
+                <div className="space-y-2 mb-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Heart className="w-4 h-4 text-red-400" />
+                    <span className="text-white font-medium">주요 자격 및 성과</span>
+                  </div>
+                  <div className="space-y-2">
+                    {grower.achievements.map((achievement, index) => (
+                      <div 
+                        key={index}
+                        className="flex items-center gap-2 text-sm text-gray-300 bg-gray-700/30 rounded-lg px-3 py-2"
+                      >
+                        <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                        {achievement}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Instagram Link */}
+                <div className="pt-6 border-t border-gray-700">
+                  <button
+                    onClick={() => handleInstagramClick(grower.instagram)}
+                    className="w-full bg-gradient-to-r from-pink-500/20 to-purple-600/20 hover:from-pink-500/30 hover:to-purple-600/30 border border-pink-500/30 text-pink-300 hover:text-pink-200 py-3 px-4 rounded-lg transition-all duration-300 flex items-center justify-center gap-2"
+                  >
+                    <Instagram className="w-5 h-5" />
+                    <span>{grower.instagram}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+      </div>
+    </section>
+    </>
   );
 };
 

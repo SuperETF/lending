@@ -1,22 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Send, Check, AlertCircle, User, Phone, Calendar, MapPin, Clock, Users, MessageCircle, X } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabase, RunningSession } from '../lib/supabase';
 
 interface FormData {
   name: string;
   phone: string;
+  email: string;
   medicalConditions: string;
-}
-
-interface RunningSession {
-  id: string;
-  title: string;
-  description: string;
-  date: string;
-  time: string;
-  location: string;
-  max_participants: number;
-  current_participants?: number;
+  privacyConsent: boolean;
+  marketingConsent: boolean;
 }
 
 const ApplicationSection: React.FC = () => {
@@ -27,23 +19,33 @@ const ApplicationSection: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({
     name: '',
     phone: '',
+    email: '',
     medicalConditions: '',
+    privacyConsent: false,
+    marketingConsent: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetchSessions();
   }, []);
 
   const fetchSessions = async () => {
     try {
+      console.log('🔄 홈페이지에서 세션 조회 중...');
+      console.log('오늘 날짜:', new Date().toISOString().split('T')[0]);
+      
       const { data, error } = await supabase
         .from('running_sessions')
         .select('*')
-        .gte('date', new Date().toISOString().split('T')[0])
+        // 임시로 날짜 필터 제거 - 모든 세션 조회
+        // .gte('date', new Date().toISOString().split('T')[0])
         .order('date', { ascending: true });
+      
+      console.log('조회된 세션 데이터:', data);
+      console.log('조회 오류:', error);
       
       if (error) throw error;
       setSessions(data || []);
@@ -73,7 +75,10 @@ const ApplicationSection: React.FC = () => {
     setFormData({
       name: '',
       phone: '',
+      email: '',
       medicalConditions: '',
+      privacyConsent: false,
+      marketingConsent: false,
     });
     setSubmitStatus('idle');
     setErrorMessage('');
@@ -86,6 +91,14 @@ const ApplicationSection: React.FC = () => {
     }
     if (!formData.phone.trim()) {
       setErrorMessage('연락처를 입력해주세요.');
+      return false;
+    }
+    if (!formData.email.trim()) {
+      setErrorMessage('이메일을 입력해주세요.');
+      return false;
+    }
+    if (!formData.privacyConsent) {
+      setErrorMessage('개인정보 수집 및 이용에 동의해주세요.');
       return false;
     }
     if (!selectedSessionForModal) {
@@ -108,29 +121,46 @@ const ApplicationSection: React.FC = () => {
     setErrorMessage('');
 
     try {
-      const { error } = await supabase
+      // 참여자 정보 삽입
+      const { error: participantError } = await supabase
         .from('participants')
         .insert([
           {
             session_id: selectedSessionForModal?.id,
             name: formData.name,
             phone: formData.phone,
-            email: '',
+            email: formData.email,
             emergency_contact: '',
             emergency_phone: '',
             medical_conditions: formData.medicalConditions,
-            privacy_consent: true,
-            marketing_consent: false,
+            privacy_consent: formData.privacyConsent,
+            marketing_consent: formData.marketingConsent,
           }
         ]);
 
-      if (error) throw error;
+      if (participantError) throw participantError;
+
+      // 세션의 현재 참여자 수 업데이트
+      const { error: updateError } = await supabase
+        .from('running_sessions')
+        .update({ 
+          current_participants: (selectedSessionForModal?.current_participants || 0) + 1 
+        })
+        .eq('id', selectedSessionForModal?.id);
+
+      if (updateError) throw updateError;
+
+      // 세션 목록 새로고침
+      await fetchSessions();
 
       setSubmitStatus('success');
       setFormData({
         name: '',
         phone: '',
+        email: '',
         medicalConditions: '',
+        privacyConsent: false,
+        marketingConsent: false,
       });
     } catch (error) {
       console.error('Error submitting application:', error);
@@ -147,10 +177,10 @@ const ApplicationSection: React.FC = () => {
         {/* Section Header */}
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-            <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">FREE RUNNING CREW</span> 러닝 세션
+            <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">FRC</span> 러닝
           </h2>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-            참여하고 싶은 러닝 세션을 선택해보세요.
+            이 달의 러닝 프로그램
           </p>
           <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-600 mx-auto mt-6"></div>
         </div>
@@ -161,15 +191,48 @@ const ApplicationSection: React.FC = () => {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
             <p className="text-gray-400 mt-4 text-lg">러닝 세션을 불러오는 중...</p>
           </div>
+        ) : sessions.length === 0 ? (
+          <div className="text-center py-16">
+            <Calendar className="w-16 h-16 text-gray-500 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-white mb-2">예정된 러닝 세션이 없습니다</h3>
+            <p className="text-gray-400 mb-6">새로운 러닝 세션이 곧 공개될 예정입니다!</p>
+            <a
+              href="https://open.kakao.com/o/gIrk58Cf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center bg-yellow-500 hover:bg-yellow-600 text-black font-semibold py-3 px-6 rounded-lg transition-all duration-300"
+            >
+              <MessageCircle className="w-5 h-5 mr-2" />
+              카카오톡 채널에서 소식 받기
+            </a>
+          </div>
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
-              {sessions.map((session) => (
-                <div key={session.id} className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50 hover:border-blue-500/50 transition-all duration-300 transform hover:scale-105">
-                  <div className="mb-4">
-                    <h3 className="text-xl font-bold text-white mb-2">{session.title}</h3>
-                    <p className="text-gray-300 text-sm mb-4 line-clamp-3">{session.description}</p>
-                  </div>
+              {sessions.map((session) => {
+                const isFull = (session.current_participants || 0) >= session.max_participants;
+                const now = new Date();
+                const registrationOpenDate = session.registration_open_date ? new Date(session.registration_open_date) : null;
+                const isRegistrationOpen = !registrationOpenDate || now >= registrationOpenDate;
+                
+                return (
+                <div key={session.id} className="bg-gray-800/50 backdrop-blur-sm rounded-2xl overflow-hidden border border-gray-700/50 hover:border-blue-500/50 transition-all duration-300 transform hover:scale-105">
+                  {/* 세션 이미지 - 3:4 인스타그램 비율 */}
+                  {session.image_url && (
+                    <div className="w-full aspect-[3/4] overflow-hidden">
+                      <img 
+                        src={session.image_url} 
+                        alt={session.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  
+                  <div className="p-6">
+                    <div className="mb-4">
+                      <h3 className="text-xl font-bold text-white mb-2">{session.title}</h3>
+                      <p className="text-gray-300 text-sm mb-4 line-clamp-3">{session.description}</p>
+                    </div>
                   
                   <div className="space-y-3 mb-6">
                     <div className="flex items-center text-gray-300">
@@ -178,7 +241,7 @@ const ApplicationSection: React.FC = () => {
                     </div>
                     <div className="flex items-center text-gray-300">
                       <Clock className="w-4 h-4 mr-2 text-blue-400" />
-                      <span className="text-sm">{session.time}</span>
+                      <span className="text-sm">{session.time.slice(0, 5)}</span>
                     </div>
                     <div className="flex items-center text-gray-300">
                       <MapPin className="w-4 h-4 mr-2 text-blue-400" />
@@ -186,18 +249,59 @@ const ApplicationSection: React.FC = () => {
                     </div>
                     <div className="flex items-center text-gray-300">
                       <Users className="w-4 h-4 mr-2 text-blue-400" />
-                      <span className="text-sm">최대 {session.max_participants}명</span>
+                      <span className="text-sm">
+                        {session.current_participants || 0}/{session.max_participants}명
+                      </span>
                     </div>
+                    
+                    {/* 오픈 예정 상태 표시 */}
+                    {!isRegistrationOpen && registrationOpenDate && (
+                      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 mt-4">
+                        <div className="flex items-center text-yellow-400 mb-1">
+                          <Clock className="w-4 h-4 mr-2" />
+                          <span className="text-sm font-medium">신청 오픈 예정</span>
+                        </div>
+                        <p className="text-xs text-yellow-300">
+                          {registrationOpenDate.toLocaleDateString('ko-KR', {
+                            month: 'long',
+                            day: 'numeric'
+                          })} {registrationOpenDate.toLocaleTimeString('ko-KR', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                          })}부터 신청 가능합니다
+                        </p>
+                      </div>
+                    )}
                   </div>
                   
                   <button
                     onClick={() => openModal(session)}
-                    className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300"
+                    disabled={isFull || !isRegistrationOpen}
+                    className={`w-full font-semibold py-3 px-4 rounded-lg transition-all duration-300 ${
+                      isFull 
+                        ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
+                        : !isRegistrationOpen
+                        ? 'bg-yellow-600/50 text-yellow-200 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white'
+                    }`}
                   >
-                    신청하기
+                    {isFull ? '마감' : !isRegistrationOpen ? '오픈 예정' : '신청하기'}
                   </button>
+                  {isFull && (
+                    <div className="mt-2 text-center">
+                      <span className="text-xs text-red-400">참여 인원이 마감되었습니다</span>
+                    </div>
+                  )}
+                  {!isRegistrationOpen && !isFull && (
+                    <div className="mt-2 text-center">
+                      <span className="text-xs text-yellow-400">신청 오픈까지 기다려주세요</span>
+                    </div>
+                  )}
+                  </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
             
             {/* KakaoTalk Channel Section */}
@@ -206,11 +310,11 @@ const ApplicationSection: React.FC = () => {
                 <MessageCircle className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
                 <h3 className="text-2xl font-bold text-white mb-2">카카오톡 채널 입장</h3>
                 <p className="text-gray-300">
-                  FREE RUNNING CREW 카카오톡 채널에서 실시간 소식과 추가 정보를 받아보세요!
+                  FRC 카카오톡 채널에서 실시간 소식과 추가 정보를 받아보세요!
                 </p>
               </div>
               <a
-                href="https://pf.kakao.com/_your_channel_id"
+                href="https://open.kakao.com/o/gIrk58Cf"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center bg-yellow-500 hover:bg-yellow-600 text-black font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105"
@@ -303,7 +407,22 @@ const ApplicationSection: React.FC = () => {
                   
                   <div>
                     <label className="block text-white font-medium mb-2">
-                      특이사항
+                      이메일 *
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none transition-colors"
+                      placeholder="example@email.com"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-white font-medium mb-2">
+                      특이사항 (의료정보)
                     </label>
                     <textarea
                       name="medicalConditions"
@@ -313,6 +432,35 @@ const ApplicationSection: React.FC = () => {
                       className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none transition-colors resize-none"
                       placeholder="운동 시 주의할 점이나 특별히 알려주실 내용 (선택사항)"
                     />
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-start">
+                      <input
+                        type="checkbox"
+                        name="privacyConsent"
+                        checked={formData.privacyConsent}
+                        onChange={handleInputChange}
+                        className="mt-1 mr-3 w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                        required
+                      />
+                      <label className="text-sm text-gray-300">
+                        개인정보 수집 및 이용에 동의합니다. * (필수)
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-start">
+                      <input
+                        type="checkbox"
+                        name="marketingConsent"
+                        checked={formData.marketingConsent}
+                        onChange={handleInputChange}
+                        className="mt-1 mr-3 w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                      />
+                      <label className="text-sm text-gray-300">
+                        마케팅 정보 수신에 동의합니다. (선택)
+                      </label>
+                    </div>
                   </div>
                   
                   {submitStatus === 'error' && errorMessage && (

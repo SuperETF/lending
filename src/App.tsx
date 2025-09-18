@@ -14,8 +14,8 @@ const App: React.FC = () => {
           <Route path="/" element={
             <>
               <HeroSection />
-              <GallerySection />
               <AboutSection />
+              <GallerySection />
               <ApplicationSection />
             </>
           } />
