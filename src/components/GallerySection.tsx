@@ -7,7 +7,7 @@ const GallerySection: React.FC = () => {
   // 실제 이미지 경로들 (public 폴더의 이미지들 사용)
   const galleryImages = [
     {
-      src: '/11.jpg',
+      src: '/dks.jpg',
       alt: 'FREE RUNNING CREW 활동 사진 1',
       category: 'running'
     },
