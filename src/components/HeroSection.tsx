@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, MapPin, Instagram, Award, Clock, Heart } from 'lucide-react';
+import { MapPin, Instagram, Heart } from 'lucide-react';
 
 const HeroSection: React.FC = () => {
   const growers = [
@@ -12,7 +12,7 @@ const HeroSection: React.FC = () => {
       description: "임상 경험을 바탕으로 안전하고 효과적인 러닝 프로그램을 설계합니다. 부상 예방과 퍼포먼스 향상에 특화된 전문가입니다.",
       instagram: "@borunnn_fit",
       achievements: ["물리치료사 면허","FRC.seoul 크루장", "20만 팔로워 크리에이터"],
-      image: "/1.png"
+      image: `${process.env.PUBLIC_URL}/1.png`
     },
     {
       id: 2,
@@ -23,7 +23,7 @@ const HeroSection: React.FC = () => {
       description: "운동 초보자분들에게 개인별 맞춤형 트레이닝과 프로그램을 제공합니다. 지속 가능한 러닝 라이프를 만들어갑니다.",
       instagram: "@chae_dev",
       achievements: ["물리치료사 면허", "통증, 교정 운동 17만 크리에이터", "파브의 통증, 교정 운동 저자"],
-      image: "/2.png"
+      image: `${process.env.PUBLIC_URL}/2.png`
     }
   ];
 
@@ -111,11 +111,14 @@ const HeroSection: React.FC = () => {
                   src={grower.image}
                   alt={`${grower.name} 프로필`}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  onLoad={() => {
+                    console.log(`✅ 이미지 로드 성공: ${grower.image}`);
+                  }}
                   onError={(e) => {
+                    console.error(`❌ 이미지 로드 실패: ${grower.image}`);
                     const target = e.target as HTMLImageElement;
                     target.style.display = 'none';
-                    target.parentElement!.classList.add('bg-gradient-to-br', 'from-blue-500/20', 'to-purple-600/20', 'flex', 'items-center', 'justify-center');
-                    target.parentElement!.innerHTML = '<div class="w-20 h-20 text-blue-400"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" /></svg></div>';
+                    target.parentElement!.classList.add('bg-gradient-to-br', 'from-blue-500/20', 'to-purple-600/20');
                   }}
                 />
                 {/* Gradient Overlay */}

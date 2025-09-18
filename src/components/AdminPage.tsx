@@ -349,6 +349,40 @@ const AdminPage: React.FC = () => {
     }
   };
 
+  // 이미지 압축 함수
+  const compressImage = (file: File, maxWidth: number = 1200, quality: number = 0.8): Promise<File> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = document.createElement('img');
+      
+      img.onload = () => {
+        // 비율 유지하면서 크기 조정
+        const ratio = Math.min(maxWidth / img.width, maxWidth / img.height);
+        canvas.width = img.width * ratio;
+        canvas.height = img.height * ratio;
+        
+        // 이미지 그리기
+        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        // Blob으로 변환
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const compressedFile = new File([blob], file.name, {
+              type: file.type,
+              lastModified: Date.now()
+            });
+            resolve(compressedFile);
+          } else {
+            resolve(file);
+          }
+        }, file.type, quality);
+      };
+      
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -359,17 +393,30 @@ const AdminPage: React.FC = () => {
       return;
     }
     
-    // 파일 크기 검증 (5MB 제한)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('파일 크기는 5MB 이하만 가능합니다.');
+    // 파일 크기 검증 (50MB 제한으로 증가)
+    if (file.size > 50 * 1024 * 1024) {
+      alert('파일 크기는 50MB 이하만 가능합니다.');
       return;
     }
     
-    const imageUrl = await uploadImage(file);
-    if (imageUrl) {
-      setNewSession(prev => ({ ...prev, image_url: imageUrl }));
-    } else {
-      alert('이미지 업로드에 실패했습니다.');
+    try {
+      // 큰 이미지는 자동 압축
+      let processedFile = file;
+      if (file.size > 2 * 1024 * 1024) { // 2MB 이상이면 압축
+        console.log('🔄 이미지 압축 중...', `${(file.size / 1024 / 1024).toFixed(2)}MB`);
+        processedFile = await compressImage(file);
+        console.log('✅ 이미지 압축 완료:', `${(processedFile.size / 1024 / 1024).toFixed(2)}MB`);
+      }
+      
+      const imageUrl = await uploadImage(processedFile);
+      if (imageUrl) {
+        setNewSession(prev => ({ ...prev, image_url: imageUrl }));
+      } else {
+        alert('이미지 업로드에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('이미지 처리 중 오류:', error);
+      alert('이미지 처리 중 오류가 발생했습니다.');
     }
   };
 
