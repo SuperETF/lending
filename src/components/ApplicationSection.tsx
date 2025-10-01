@@ -458,6 +458,24 @@ const ApplicationSection: React.FC = () => {
                   <p className="text-gray-300 mb-6">
                     선택하신 세션에 대한 자세한 안내를 곧 연락드리겠습니다.
                   </p>
+                  
+                  {/* 오픈 채팅방 링크 표시 */}
+                  {selectedSessionForModal?.chat_link && (
+                    <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6">
+                      <p className="text-yellow-300 text-sm mb-3 text-center">
+                        오픈 채팅방 링크를 공유해 드립니다. 바로 접속해 주시면 됩니다.
+                      </p>
+                      <a
+                        href={selectedSessionForModal.chat_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block w-full bg-yellow-500 hover:bg-yellow-600 text-black font-semibold py-3 px-4 rounded-lg text-center transition-all duration-300 transform hover:scale-105"
+                      >
+                        💬 오픈 채팅방 입장하기
+                      </a>
+                    </div>
+                  )}
+                  
                   <button
                     onClick={closeModal}
                     className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg transition-all duration-300"

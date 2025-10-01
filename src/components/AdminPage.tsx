@@ -22,7 +22,8 @@ const AdminPage: React.FC = () => {
     location: '',
     max_participants: 10,
     registration_open_date: '',
-    image_url: ''
+    image_url: '',
+    chat_link: ''
   });
   const [uploadingImage, setUploadingImage] = useState(false);
   const [timeInput, setTimeInput] = useState('');
@@ -102,6 +103,7 @@ const AdminPage: React.FC = () => {
         .insert([{
           ...newSession,
           registration_open_date: newSession.registration_open_date || null,
+          chat_link: newSession.chat_link || null,
           current_participants: 0
           // created_by는 제거 - NULL 허용하도록 스키마 수정 필요
         }]);
@@ -116,7 +118,8 @@ const AdminPage: React.FC = () => {
         location: '',
         max_participants: 10,
         registration_open_date: '',
-        image_url: ''
+        image_url: '',
+        chat_link: ''
       });
       setIsCreating(false);
       fetchSessions();
@@ -141,7 +144,8 @@ const AdminPage: React.FC = () => {
           location: newSession.location,
           max_participants: newSession.max_participants,
           registration_open_date: newSession.registration_open_date || null,
-          image_url: newSession.image_url
+          image_url: newSession.image_url,
+          chat_link: newSession.chat_link || null
         })
         .eq('id', editingSession.id);
 
@@ -156,7 +160,8 @@ const AdminPage: React.FC = () => {
         location: '',
         max_participants: 10,
         registration_open_date: '',
-        image_url: ''
+        image_url: '',
+        chat_link: ''
       });
       setTimeInput('');
       setShowTimeSuggestions(false);
@@ -178,7 +183,8 @@ const AdminPage: React.FC = () => {
       location: session.location,
       max_participants: session.max_participants,
       registration_open_date: session.registration_open_date ? toKoreanTime(session.registration_open_date).toISOString().slice(0, 16) : '',
-      image_url: session.image_url || ''
+      image_url: session.image_url || '',
+      chat_link: session.chat_link || ''
     });
     
     setTimeInput('');
@@ -259,6 +265,63 @@ const AdminPage: React.FC = () => {
     } catch (error) {
       console.error('Unexpected error during deletion:', error);
       alert('삭제 중 예상치 못한 오류가 발생했습니다.');
+    }
+  };
+
+  const deleteParticipant = async (participantId: string, sessionId: string) => {
+    if (!window.confirm('정말로 이 참여자를 삭제하시겠습니까?')) return;
+
+    try {
+      // 1. 참여자 삭제
+      const { error: participantError } = await supabase
+        .from('participants')
+        .delete()
+        .eq('id', participantId);
+
+      if (participantError) throw participantError;
+
+      // 2. 세션의 현재 참여자 수 감소
+      const session = sessions.find(s => s.id === sessionId);
+      if (session) {
+        const { error: updateError } = await supabase
+          .from('running_sessions')
+          .update({ 
+            current_participants: Math.max(0, (session.current_participants || 0) - 1)
+          })
+          .eq('id', sessionId);
+
+        if (updateError) throw updateError;
+      }
+
+      // 3. 데이터 새로고침
+      await fetchParticipants();
+      await fetchSessions();
+      
+      alert('참여자가 성공적으로 삭제되었습니다.');
+    } catch (error) {
+      console.error('Error deleting participant:', error);
+      alert('참여자 삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  const deleteWaitlistParticipant = async (participantId: string) => {
+    if (!window.confirm('정말로 이 대기 참여자를 삭제하시겠습니까?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('waitlist_participants')
+        .delete()
+        .eq('id', participantId);
+
+      if (error) throw error;
+
+      // 대기 참여자 목록 새로고침
+      await fetchWaitlistParticipants();
+      
+      alert('대기 참여자가 성공적으로 삭제되었습니다.');
+    } catch (error) {
+      console.error('Error deleting waitlist participant:', error);
+      alert('대기 참여자 삭제 중 오류가 발생했습니다.');
     }
   };
 
@@ -798,6 +861,22 @@ const AdminPage: React.FC = () => {
                   </p>
                 </div>
                 
+                <div>
+                  <label className="block text-white text-sm font-medium mb-2">
+                    💬 오픈 채팅방 링크
+                  </label>
+                  <input
+                    type="url"
+                    value={newSession.chat_link}
+                    onChange={(e) => setNewSession({...newSession, chat_link: e.target.value})}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400"
+                    placeholder="https://open.kakao.com/o/..."
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    참여자들이 신청 완료 후 접속할 수 있는 오픈 채팅방 링크를 입력하세요. (선택사항)
+                  </p>
+                </div>
+                
                 {/* 이미지 업로드 섹션 */}
                 <div>
                   <label className="block text-white text-sm font-medium mb-2">
@@ -876,7 +955,8 @@ const AdminPage: React.FC = () => {
                         location: '',
                         max_participants: 10,
                         registration_open_date: '',
-                        image_url: ''
+                        image_url: '',
+                        chat_link: ''
                       });
                     }}
                     className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg transition-colors"
@@ -969,8 +1049,15 @@ const AdminPage: React.FC = () => {
                           </h4>
                           <div className="space-y-2">
                             {getSessionParticipants(session.id).map((participant) => (
-                              <div key={participant.id} className="text-sm text-gray-300 bg-gray-700/50 rounded p-2">
-                                {participant.name} - {participant.phone}
+                              <div key={participant.id} className="text-sm text-gray-300 bg-gray-700/50 rounded p-2 flex justify-between items-center">
+                                <span>{participant.name} - {participant.phone}</span>
+                                <button
+                                  onClick={() => deleteParticipant(participant.id, session.id)}
+                                  className="text-red-400 hover:text-red-300 transition-colors p-1"
+                                  title="참여자 삭제"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
                               </div>
                             ))}
                           </div>
@@ -986,11 +1073,20 @@ const AdminPage: React.FC = () => {
                           </h4>
                           <div className="space-y-2">
                             {getSessionWaitlistParticipants(session.id).map((participant, index) => (
-                              <div key={participant.id} className="text-sm text-gray-300 bg-orange-900/20 rounded p-2 border border-orange-600/30">
-                                <span className="text-xs bg-orange-600 text-white px-1 py-0.5 rounded mr-2">
-                                  {index + 1}순위
-                                </span>
-                                {participant.name} - {participant.phone}
+                              <div key={participant.id} className="text-sm text-gray-300 bg-orange-900/20 rounded p-2 border border-orange-600/30 flex justify-between items-center">
+                                <div>
+                                  <span className="text-xs bg-orange-600 text-white px-1 py-0.5 rounded mr-2">
+                                    {index + 1}순위
+                                  </span>
+                                  {participant.name} - {participant.phone}
+                                </div>
+                                <button
+                                  onClick={() => deleteWaitlistParticipant(participant.id)}
+                                  className="text-red-400 hover:text-red-300 transition-colors p-1"
+                                  title="대기 참여자 삭제"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
                               </div>
                             ))}
                           </div>
@@ -1074,9 +1170,18 @@ const AdminPage: React.FC = () => {
                               <div key={participant.id} className="bg-gray-700/50 rounded-lg p-3 border border-gray-600">
                                 <div className="flex justify-between items-start mb-2">
                                   <h4 className="text-white font-medium">{participant.name}</h4>
-                                  <span className="text-xs text-gray-500">
-                                    {formatKoreanDate(participant.created_at)}
-                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-500">
+                                      {formatKoreanDate(participant.created_at)}
+                                    </span>
+                                    <button
+                                      onClick={() => deleteParticipant(participant.id, session.id)}
+                                      className="text-red-400 hover:text-red-300 transition-colors p-1"
+                                      title="참여자 삭제"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
                                 </div>
                                 <div className="text-sm text-gray-400 space-y-1">
                                   <p>📞 {participant.phone}</p>
@@ -1117,9 +1222,18 @@ const AdminPage: React.FC = () => {
                                     </span>
                                     <h4 className="text-white font-medium">{waitlistParticipant.name}</h4>
                                   </div>
-                                  <span className="text-xs text-gray-500">
-                                    {formatKoreanDate(waitlistParticipant.created_at)}
-                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-500">
+                                      {formatKoreanDate(waitlistParticipant.created_at)}
+                                    </span>
+                                    <button
+                                      onClick={() => deleteWaitlistParticipant(waitlistParticipant.id)}
+                                      className="text-red-400 hover:text-red-300 transition-colors p-1"
+                                      title="대기 참여자 삭제"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
                                 </div>
                                 <div className="text-sm text-gray-400">
                                   <p>📞 {waitlistParticipant.phone}</p>

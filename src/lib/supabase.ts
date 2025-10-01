@@ -17,6 +17,7 @@ export interface RunningSession {
   current_participants: number
   registration_open_date: string
   image_url?: string
+  chat_link?: string
   created_at: string
   created_by?: string
 }
