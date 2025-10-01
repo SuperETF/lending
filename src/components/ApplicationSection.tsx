@@ -456,14 +456,14 @@ const ApplicationSection: React.FC = () => {
                   </div>
                   <h4 className="text-xl font-bold text-white mb-4">신청이 완료되었습니다!</h4>
                   <p className="text-gray-300 mb-6">
-                    선택하신 세션에 대한 자세한 안내를 곧 연락드리겠습니다.
+                    선택하신 세션에 대한 안내는 채팅방에서 진행됩니다.
                   </p>
                   
                   {/* 오픈 채팅방 링크 표시 */}
                   {selectedSessionForModal?.chat_link && (
                     <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6">
                       <p className="text-yellow-300 text-sm mb-3 text-center">
-                        오픈 채팅방 링크를 공유해 드립니다. 바로 접속해 주시면 됩니다.
+                        오픈 채팅방으로 바로 접속해 주시면 됩니다.
                       </p>
                       <a
                         href={selectedSessionForModal.chat_link}
