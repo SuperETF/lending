@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Calendar, Users, MapPin, Clock, Trash2, Eye, Edit, Download, Filter, Upload, Image, X } from 'lucide-react';
-import { supabase, RunningSession, Participant } from '../lib/supabase';
+import { supabase, RunningSession, Participant, WaitlistParticipant } from '../lib/supabase';
+import { getKoreanToday, formatKoreanDate, formatKoreanDateTime, getKoreanDateForFilename, isCurrentMonthKorean, toKoreanTime } from '../utils/dateUtils';
 
 const AdminPage: React.FC = () => {
   const [sessions, setSessions] = useState<RunningSession[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
+  const [waitlistParticipants, setWaitlistParticipants] = useState<WaitlistParticipant[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingSession, setEditingSession] = useState<RunningSession | null>(null);
@@ -30,6 +32,7 @@ const AdminPage: React.FC = () => {
   useEffect(() => {
     fetchSessions();
     fetchParticipants();
+    fetchWaitlistParticipants();
   }, []);
 
   // 외부 클릭 시 자동완성 닫기
@@ -73,6 +76,20 @@ const AdminPage: React.FC = () => {
       console.error('Error fetching participants:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchWaitlistParticipants = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('waitlist_participants')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setWaitlistParticipants(data || []);
+    } catch (error) {
+      console.error('Error fetching waitlist participants:', error);
     }
   };
 
@@ -160,7 +177,7 @@ const AdminPage: React.FC = () => {
       time: session.time,
       location: session.location,
       max_participants: session.max_participants,
-      registration_open_date: session.registration_open_date ? new Date(session.registration_open_date).toISOString().slice(0, 16) : '',
+      registration_open_date: session.registration_open_date ? toKoreanTime(session.registration_open_date).toISOString().slice(0, 16) : '',
       image_url: session.image_url || ''
     });
     
@@ -246,28 +263,47 @@ const AdminPage: React.FC = () => {
   };
 
   const exportAllParticipants = () => {
+    const regularParticipants = participants.map(p => {
+      const session = sessions.find(s => s.id === p.session_id);
+      return [
+        session?.title || '알 수 없는 세션',
+        '정식 참여자',
+        p.name,
+        p.phone,
+        p.email,
+        p.emergency_contact,
+        p.emergency_phone,
+        p.medical_conditions || '',
+        formatKoreanDateTime(p.created_at)
+      ];
+    });
+
+    const waitlistData = waitlistParticipants.map(p => {
+      const session = sessions.find(s => s.id === p.session_id);
+      return [
+        session?.title || '알 수 없는 세션',
+        '대기 신청자',
+        p.name,
+        p.phone,
+        '',  // 이메일 없음
+        '',  // 응급연락처 없음
+        '',  // 응급전화 없음
+        '',  // 의료정보 없음
+        formatKoreanDateTime(p.created_at)
+      ];
+    });
+
     const csvContent = [
-      ['세션명', '이름', '전화번호', '이메일', '응급연락처', '응급전화', '의료정보', '신청일시'],
-      ...participants.map(p => {
-        const session = sessions.find(s => s.id === p.session_id);
-        return [
-          session?.title || '알 수 없는 세션',
-          p.name,
-          p.phone,
-          p.email,
-          p.emergency_contact,
-          p.emergency_phone,
-          p.medical_conditions || '',
-          new Date(p.created_at).toLocaleString()
-        ];
-      })
+      ['세션명', '구분', '이름', '전화번호', '이메일', '응급연락처', '응급전화', '의료정보', '신청일시'],
+      ...regularParticipants,
+      ...waitlistData
     ].map(row => row.join(',')).join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `FRC_전체참여자_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `FRC_전체참여자_${getKoreanDateForFilename()}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -276,30 +312,46 @@ const AdminPage: React.FC = () => {
 
   const exportSessionParticipants = (sessionId: string, sessionTitle: string) => {
     const sessionParticipants = participants.filter(p => p.session_id === sessionId);
+    const sessionWaitlist = waitlistParticipants.filter(p => p.session_id === sessionId);
     
-    if (sessionParticipants.length === 0) {
+    if (sessionParticipants.length === 0 && sessionWaitlist.length === 0) {
       alert('해당 세션에 참여자가 없습니다.');
       return;
     }
 
+    const regularData = sessionParticipants.map(p => [
+      '정식 참여자',
+      p.name,
+      p.phone,
+      p.email,
+      p.emergency_contact,
+      p.emergency_phone,
+      p.medical_conditions || '',
+      formatKoreanDateTime(p.created_at)
+    ]);
+
+    const waitlistData = sessionWaitlist.map((p, index) => [
+      `대기 ${index + 1}순위`,
+      p.name,
+      p.phone,
+      '',  // 이메일 없음
+      '',  // 응급연락처 없음
+      '',  // 응급전화 없음
+      '',  // 의료정보 없음
+      formatKoreanDateTime(p.created_at)
+    ]);
+
     const csvContent = [
-      ['이름', '전화번호', '이메일', '응급연락처', '응급전화', '의료정보', '신청일시'],
-      ...sessionParticipants.map(p => [
-        p.name,
-        p.phone,
-        p.email,
-        p.emergency_contact,
-        p.emergency_phone,
-        p.medical_conditions || '',
-        new Date(p.created_at).toLocaleString()
-      ])
+      ['구분', '이름', '전화번호', '이메일', '응급연락처', '응급전화', '의료정보', '신청일시'],
+      ...regularData,
+      ...waitlistData
     ].map(row => row.join(',')).join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `FRC_${sessionTitle}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `FRC_${sessionTitle}_${getKoreanDateForFilename()}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -511,7 +563,7 @@ const AdminPage: React.FC = () => {
   };
 
   const getFilteredSessions = () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getKoreanToday();
     
     switch (filterStatus) {
       case 'upcoming':
@@ -525,6 +577,10 @@ const AdminPage: React.FC = () => {
 
   const getSessionParticipants = (sessionId: string) => {
     return participants.filter(p => p.session_id === sessionId);
+  };
+
+  const getSessionWaitlistParticipants = (sessionId: string) => {
+    return waitlistParticipants.filter(p => p.session_id === sessionId);
   };
 
   if (loading) {
@@ -587,11 +643,7 @@ const AdminPage: React.FC = () => {
               <div>
                 <p className="text-gray-400 text-sm">이번 달 신청</p>
                 <p className="text-2xl font-bold text-white">
-                  {participants.filter(p => {
-                    const created = new Date(p.created_at);
-                    const now = new Date();
-                    return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear();
-                  }).length}
+                  {participants.filter(p => isCurrentMonthKorean(p.created_at)).length}
                 </p>
               </div>
               <Eye className="w-8 h-8 text-purple-500" />
@@ -908,17 +960,46 @@ const AdminPage: React.FC = () => {
                   {/* Session Participants */}
                   {selectedSession === session.id && (
                     <div className="mt-4 pt-4 border-t border-gray-700">
-                      <h4 className="text-white font-medium mb-2">참여자 목록</h4>
-                      <div className="space-y-2">
-                        {getSessionParticipants(session.id).map((participant) => (
-                          <div key={participant.id} className="text-sm text-gray-300 bg-gray-700/50 rounded p-2">
-                            {participant.name} - {participant.phone}
+                      {/* 정식 참여자 */}
+                      {getSessionParticipants(session.id).length > 0 && (
+                        <div className="mb-4">
+                          <h4 className="text-white font-medium mb-2 flex items-center gap-2">
+                            <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                            정식 참여자
+                          </h4>
+                          <div className="space-y-2">
+                            {getSessionParticipants(session.id).map((participant) => (
+                              <div key={participant.id} className="text-sm text-gray-300 bg-gray-700/50 rounded p-2">
+                                {participant.name} - {participant.phone}
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                        {getSessionParticipants(session.id).length === 0 && (
-                          <p className="text-gray-500 text-sm">아직 참여자가 없습니다.</p>
-                        )}
-                      </div>
+                        </div>
+                      )}
+                      
+                      {/* 대기 신청자 */}
+                      {getSessionWaitlistParticipants(session.id).length > 0 && (
+                        <div className="mb-4">
+                          <h4 className="text-white font-medium mb-2 flex items-center gap-2">
+                            <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                            대기 신청자
+                          </h4>
+                          <div className="space-y-2">
+                            {getSessionWaitlistParticipants(session.id).map((participant, index) => (
+                              <div key={participant.id} className="text-sm text-gray-300 bg-orange-900/20 rounded p-2 border border-orange-600/30">
+                                <span className="text-xs bg-orange-600 text-white px-1 py-0.5 rounded mr-2">
+                                  {index + 1}순위
+                                </span>
+                                {participant.name} - {participant.phone}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {getSessionParticipants(session.id).length === 0 && getSessionWaitlistParticipants(session.id).length === 0 && (
+                        <p className="text-gray-500 text-sm">아직 참여자가 없습니다.</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -952,13 +1033,21 @@ const AdminPage: React.FC = () => {
                           </p>
                         </div>
                         <div className="text-right flex flex-col items-end gap-2">
-                          <div>
-                            <span className="text-blue-400 font-medium">
-                              {sessionParticipants.length}/{session.max_participants}명
-                            </span>
-                            <p className="text-xs text-gray-500">참여자</p>
+                          <div className="space-y-1">
+                            <div>
+                              <span className="text-blue-400 font-medium">
+                                {sessionParticipants.length}/{session.max_participants}명
+                              </span>
+                              <p className="text-xs text-gray-500">참여자</p>
+                            </div>
+                            <div>
+                              <span className="text-orange-400 font-medium">
+                                {getSessionWaitlistParticipants(session.id).length}명
+                              </span>
+                              <p className="text-xs text-gray-500">대기</p>
+                            </div>
                           </div>
-                          {sessionParticipants.length > 0 && (
+                          {(sessionParticipants.length > 0 || getSessionWaitlistParticipants(session.id).length > 0) && (
                             <button
                               onClick={() => exportSessionParticipants(session.id, session.title)}
                               className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs flex items-center gap-1 transition-colors"
@@ -973,36 +1062,76 @@ const AdminPage: React.FC = () => {
                     
                     {/* 참여자 목록 */}
                     <div className="p-4">
-                      {sessionParticipants.length > 0 ? (
-                        <div className="space-y-3">
-                          {sessionParticipants.map((participant) => (
-                            <div key={participant.id} className="bg-gray-700/50 rounded-lg p-3 border border-gray-600">
-                              <div className="flex justify-between items-start mb-2">
-                                <h4 className="text-white font-medium">{participant.name}</h4>
-                                <span className="text-xs text-gray-500">
-                                  {new Date(participant.created_at).toLocaleDateString()}
-                                </span>
+                      {/* 정식 참여자 */}
+                      {sessionParticipants.length > 0 && (
+                        <div className="mb-6">
+                          <h5 className="text-white font-medium mb-3 flex items-center gap-2">
+                            <span className="w-3 h-3 bg-blue-500 rounded-full"></span>
+                            정식 참여자 ({sessionParticipants.length}명)
+                          </h5>
+                          <div className="space-y-3">
+                            {sessionParticipants.map((participant) => (
+                              <div key={participant.id} className="bg-gray-700/50 rounded-lg p-3 border border-gray-600">
+                                <div className="flex justify-between items-start mb-2">
+                                  <h4 className="text-white font-medium">{participant.name}</h4>
+                                  <span className="text-xs text-gray-500">
+                                    {formatKoreanDate(participant.created_at)}
+                                  </span>
+                                </div>
+                                <div className="text-sm text-gray-400 space-y-1">
+                                  <p>📞 {participant.phone}</p>
+                                  <p>📧 {participant.email}</p>
+                                  <p>🚨 {participant.emergency_contact} ({participant.emergency_phone})</p>
+                                  {participant.medical_conditions && (
+                                    <p>🏥 {participant.medical_conditions}</p>
+                                  )}
+                                </div>
+                                <div className="flex gap-2 mt-2">
+                                  {participant.privacy_consent && (
+                                    <span className="text-xs bg-green-900/30 text-green-400 px-2 py-1 rounded">개인정보동의</span>
+                                  )}
+                                  {participant.marketing_consent && (
+                                    <span className="text-xs bg-blue-900/30 text-blue-400 px-2 py-1 rounded">마케팅동의</span>
+                                  )}
+                                </div>
                               </div>
-                              <div className="text-sm text-gray-400 space-y-1">
-                                <p>📞 {participant.phone}</p>
-                                <p>📧 {participant.email}</p>
-                                <p>🚨 {participant.emergency_contact} ({participant.emergency_phone})</p>
-                                {participant.medical_conditions && (
-                                  <p>🏥 {participant.medical_conditions}</p>
-                                )}
-                              </div>
-                              <div className="flex gap-2 mt-2">
-                                {participant.privacy_consent && (
-                                  <span className="text-xs bg-green-900/30 text-green-400 px-2 py-1 rounded">개인정보동의</span>
-                                )}
-                                {participant.marketing_consent && (
-                                  <span className="text-xs bg-blue-900/30 text-blue-400 px-2 py-1 rounded">마케팅동의</span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
-                      ) : (
+                      )}
+
+                      {/* 대기 신청자 */}
+                      {getSessionWaitlistParticipants(session.id).length > 0 && (
+                        <div className="mb-6">
+                          <h5 className="text-white font-medium mb-3 flex items-center gap-2">
+                            <span className="w-3 h-3 bg-orange-500 rounded-full"></span>
+                            대기 신청자 ({getSessionWaitlistParticipants(session.id).length}명)
+                          </h5>
+                          <div className="space-y-3">
+                            {getSessionWaitlistParticipants(session.id).map((waitlistParticipant, index) => (
+                              <div key={waitlistParticipant.id} className="bg-orange-900/20 rounded-lg p-3 border border-orange-600/30">
+                                <div className="flex justify-between items-start mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs bg-orange-600 text-white px-2 py-1 rounded font-medium">
+                                      대기 {index + 1}순위
+                                    </span>
+                                    <h4 className="text-white font-medium">{waitlistParticipant.name}</h4>
+                                  </div>
+                                  <span className="text-xs text-gray-500">
+                                    {formatKoreanDate(waitlistParticipant.created_at)}
+                                  </span>
+                                </div>
+                                <div className="text-sm text-gray-400">
+                                  <p>📞 {waitlistParticipant.phone}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 참여자가 없는 경우 */}
+                      {sessionParticipants.length === 0 && getSessionWaitlistParticipants(session.id).length === 0 && (
                         <div className="text-center py-6 text-gray-500">
                           아직 신청한 참여자가 없습니다.
                         </div>

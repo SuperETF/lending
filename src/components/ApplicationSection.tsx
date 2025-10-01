@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Send, Check, AlertCircle, User, Phone, Calendar, MapPin, Clock, Users, MessageCircle, X } from 'lucide-react';
-import { supabase, RunningSession } from '../lib/supabase';
+import { supabase, RunningSession, WaitlistParticipant } from '../lib/supabase';
+import { getKoreanToday, getKoreanNow, formatKoreanMonthDay, formatKoreanTime } from '../utils/dateUtils';
 
 interface FormData {
   name: string;
@@ -9,6 +10,11 @@ interface FormData {
   medicalConditions: string;
   privacyConsent: boolean;
   marketingConsent: boolean;
+}
+
+interface WaitlistFormData {
+  name: string;
+  phone: string;
 }
 
 const ApplicationSection: React.FC = () => {
@@ -27,6 +33,17 @@ const ApplicationSection: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  
+  // 대기 신청 관련 상태
+  const [isWaitlistModalOpen, setIsWaitlistModalOpen] = useState(false);
+  const [selectedSessionForWaitlist, setSelectedSessionForWaitlist] = useState<RunningSession | null>(null);
+  const [waitlistFormData, setWaitlistFormData] = useState<WaitlistFormData>({
+    name: '',
+    phone: '',
+  });
+  const [isWaitlistSubmitting, setIsWaitlistSubmitting] = useState(false);
+  const [waitlistSubmitStatus, setWaitlistSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [waitlistErrorMessage, setWaitlistErrorMessage] = useState('');
 
   useEffect(() => {
     fetchSessions();
@@ -38,8 +55,8 @@ const ApplicationSection: React.FC = () => {
       const { data, error } = await supabase
         .from('running_sessions')
         .select('*')
-        // 임시로 날짜 필터 제거 - 모든 세션 조회
-        // .gte('date', new Date().toISOString().split('T')[0])
+        // 한국 시간 기준으로 오늘 이후 세션만 조회
+        .gte('date', getKoreanToday())
         .order('date', { ascending: true });
       
       
@@ -57,6 +74,14 @@ const ApplicationSection: React.FC = () => {
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+    }));
+  };
+
+  const handleWaitlistInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setWaitlistFormData(prev => ({
+      ...prev,
+      [name]: value
     }));
   };
 
@@ -80,6 +105,22 @@ const ApplicationSection: React.FC = () => {
     setErrorMessage('');
   };
 
+  const openWaitlistModal = (session: RunningSession) => {
+    setSelectedSessionForWaitlist(session);
+    setIsWaitlistModalOpen(true);
+  };
+
+  const closeWaitlistModal = () => {
+    setIsWaitlistModalOpen(false);
+    setSelectedSessionForWaitlist(null);
+    setWaitlistFormData({
+      name: '',
+      phone: '',
+    });
+    setWaitlistSubmitStatus('idle');
+    setWaitlistErrorMessage('');
+  };
+
   const validateForm = (): boolean => {
     if (!formData.name.trim()) {
       setErrorMessage('이름을 입력해주세요.');
@@ -99,6 +140,22 @@ const ApplicationSection: React.FC = () => {
     }
     if (!selectedSessionForModal) {
       setErrorMessage('세션 정보가 없습니다.');
+      return false;
+    }
+    return true;
+  };
+
+  const validateWaitlistForm = (): boolean => {
+    if (!waitlistFormData.name.trim()) {
+      setWaitlistErrorMessage('이름을 입력해주세요.');
+      return false;
+    }
+    if (!waitlistFormData.phone.trim()) {
+      setWaitlistErrorMessage('연락처를 입력해주세요.');
+      return false;
+    }
+    if (!selectedSessionForWaitlist) {
+      setWaitlistErrorMessage('세션 정보가 없습니다.');
       return false;
     }
     return true;
@@ -167,8 +224,48 @@ const ApplicationSection: React.FC = () => {
     }
   };
 
+  const handleWaitlistSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateWaitlistForm()) {
+      setWaitlistSubmitStatus('error');
+      return;
+    }
+
+    setIsWaitlistSubmitting(true);
+    setWaitlistSubmitStatus('idle');
+    setWaitlistErrorMessage('');
+
+    try {
+      // 대기 신청자 정보 삽입
+      const { error: waitlistError } = await supabase
+        .from('waitlist_participants')
+        .insert([
+          {
+            session_id: selectedSessionForWaitlist?.id,
+            name: waitlistFormData.name,
+            phone: waitlistFormData.phone,
+          }
+        ]);
+
+      if (waitlistError) throw waitlistError;
+
+      setWaitlistSubmitStatus('success');
+      setWaitlistFormData({
+        name: '',
+        phone: '',
+      });
+    } catch (error) {
+      console.error('Error submitting waitlist application:', error);
+      setWaitlistSubmitStatus('error');
+      setWaitlistErrorMessage('대기 신청 중 오류가 발생했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsWaitlistSubmitting(false);
+    }
+  };
+
   return (
-    <section id="application" className="py-20 bg-gradient-to-b from-gray-900 to-black">
+    <section id="application" className="py-20 bg-black">
       <div className="max-w-6xl mx-auto px-6">
         {/* Section Header */}
         <div className="text-center mb-16">
@@ -207,7 +304,7 @@ const ApplicationSection: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
               {sessions.map((session) => {
                 const isFull = (session.current_participants || 0) >= session.max_participants;
-                const now = new Date();
+                const now = getKoreanNow();
                 const registrationOpenDate = session.registration_open_date ? new Date(session.registration_open_date) : null;
                 const isRegistrationOpen = !registrationOpenDate || now >= registrationOpenDate;
                 
@@ -258,14 +355,7 @@ const ApplicationSection: React.FC = () => {
                           <span className="text-sm font-medium">신청 오픈 예정</span>
                         </div>
                         <p className="text-xs text-yellow-300">
-                          {registrationOpenDate.toLocaleDateString('ko-KR', {
-                            month: 'long',
-                            day: 'numeric'
-                          })} {registrationOpenDate.toLocaleTimeString('ko-KR', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: true
-                          })}부터 신청 가능합니다
+                          {formatKoreanMonthDay(registrationOpenDate)} {formatKoreanTime(registrationOpenDate)}부터 신청 가능합니다
                         </p>
                       </div>
                     )}
@@ -285,8 +375,16 @@ const ApplicationSection: React.FC = () => {
                     {isFull ? '마감' : !isRegistrationOpen ? '오픈 예정' : '신청하기'}
                   </button>
                   {isFull && (
-                    <div className="mt-2 text-center">
-                      <span className="text-xs text-red-400">참여 인원이 마감되었습니다</span>
+                    <div className="mt-3 space-y-2">
+                      <div className="text-center">
+                        <span className="text-xs text-red-400">참여 인원이 마감되었습니다</span>
+                      </div>
+                      <button
+                        onClick={() => openWaitlistModal(session)}
+                        className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300"
+                      >
+                        대기 신청하기
+                      </button>
                     </div>
                   )}
                   {!isRegistrationOpen && !isFull && (
@@ -486,6 +584,126 @@ const ApplicationSection: React.FC = () => {
                         </span>
                       ) : (
                         '신청하기'
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {/* Waitlist Application Modal */}
+        {isWaitlistModalOpen && selectedSessionForWaitlist && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-gray-800 rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto border border-gray-700">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-bold text-white">대기 신청</h3>
+                <button
+                  onClick={closeWaitlistModal}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              {/* Selected Session Info */}
+              <div className="bg-gray-700/50 rounded-lg p-4 mb-6">
+                <h4 className="font-semibold text-white mb-2">{selectedSessionForWaitlist.title}</h4>
+                <div className="space-y-2 text-sm text-gray-300">
+                  <div className="flex items-center">
+                    <Calendar className="w-4 h-4 mr-2" />
+                    {selectedSessionForWaitlist.date} {selectedSessionForWaitlist.time}
+                  </div>
+                  <div className="flex items-center">
+                    <MapPin className="w-4 h-4 mr-2" />
+                    {selectedSessionForWaitlist.location}
+                  </div>
+                </div>
+                <div className="mt-3 p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                  <p className="text-orange-300 text-sm">
+                    현재 정원이 마감되었습니다. 대기 신청하시면 취소자 발생 시 우선적으로 연락드리겠습니다.
+                  </p>
+                </div>
+              </div>
+              
+              {waitlistSubmitStatus === 'success' ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Check className="w-8 h-8 text-white" />
+                  </div>
+                  <h4 className="text-xl font-bold text-white mb-4">대기 신청이 완료되었습니다!</h4>
+                  <p className="text-gray-300 mb-6">
+                    취소자 발생 시 순서대로 연락드리겠습니다.
+                  </p>
+                  <button
+                    onClick={closeWaitlistModal}
+                    className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg transition-all duration-300"
+                  >
+                    확인
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleWaitlistSubmit} className="space-y-6">
+                  <div>
+                    <label className="block text-white font-medium mb-2">
+                      <User className="w-4 h-4 inline mr-2" />
+                      이름 *
+                    </label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={waitlistFormData.name}
+                      onChange={handleWaitlistInputChange}
+                      className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none transition-colors"
+                      placeholder="홍길동"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-white font-medium mb-2">
+                      <Phone className="w-4 h-4 inline mr-2" />
+                      연락처 *
+                    </label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={waitlistFormData.phone}
+                      onChange={handleWaitlistInputChange}
+                      className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none transition-colors"
+                      placeholder="010-1234-5678"
+                      required
+                    />
+                  </div>
+                  
+                  {waitlistSubmitStatus === 'error' && waitlistErrorMessage && (
+                    <div className="flex items-center space-x-2 text-red-400 bg-red-900/20 border border-red-500/30 rounded-lg p-3">
+                      <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                      <span className="text-sm">{waitlistErrorMessage}</span>
+                    </div>
+                  )}
+                  
+                  <div className="flex space-x-3">
+                    <button
+                      type="button"
+                      onClick={closeWaitlistModal}
+                      className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300"
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isWaitlistSubmitting}
+                      className="flex-1 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300"
+                    >
+                      {isWaitlistSubmitting ? (
+                        <span className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          대기 신청 중...
+                        </span>
+                      ) : (
+                        '대기 신청하기'
                       )}
                     </button>
                   </div>

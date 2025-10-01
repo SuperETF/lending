@@ -41,3 +41,11 @@ export interface Admin {
   name: string
   created_at: string
 }
+
+export interface WaitlistParticipant {
+  id: string
+  session_id: string
+  name: string
+  phone: string
+  created_at: string
+}

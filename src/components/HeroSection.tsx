@@ -39,7 +39,7 @@ const HeroSection: React.FC = () => {
       {/* Background Image with Dark Overlay */}
       <div className="absolute inset-0 z-0">
         <div 
-          className="w-full h-full bg-gradient-to-br from-gray-900 via-black to-gray-800"
+          className="w-full h-full bg-black"
         />
       </div>
 
@@ -83,7 +83,7 @@ const HeroSection: React.FC = () => {
     </section>
 
     {/* Grower Section */}
-    <section className="py-20 bg-gradient-to-b from-gray-900 to-black">
+    <section className="py-20 bg-black">
       <div className="max-w-6xl mx-auto px-6">
         {/* Section Header */}
         <div className="text-center mb-16">
