@@ -303,7 +303,12 @@ const ApplicationSection: React.FC = () => {
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
               {sessions.map((session) => {
-                const isFull = (session.current_participants || 0) >= session.max_participants;
+                // 총 참여자 수 = 홈페이지 신청자 + 사전 신청자
+                const totalParticipants = (session.current_participants || 0) + (session.pre_registered_count || 0);
+                const isFull = totalParticipants >= session.max_participants;
+                // 홈페이지에서 신청 가능한 자리가 있는지 확인
+                const availableWebSlots = session.max_participants - (session.pre_registered_count || 0);
+                const isWebApplicationFull = (session.current_participants || 0) >= availableWebSlots;
                 const now = getKoreanNow();
                 const registrationOpenDate = session.registration_open_date ? new Date(session.registration_open_date) : null;
                 const isRegistrationOpen = !registrationOpenDate || now >= registrationOpenDate;
@@ -343,7 +348,12 @@ const ApplicationSection: React.FC = () => {
                     <div className="flex items-center text-gray-300">
                       <Users className="w-4 h-4 mr-2 text-blue-400" />
                       <span className="text-sm">
-                        {session.current_participants || 0}/{session.max_participants}명
+                        {totalParticipants}/{session.max_participants}명
+                        {(session.pre_registered_count || 0) > 0 && (
+                          <span className="text-xs text-gray-400 ml-1">
+                            (사전신청 {session.pre_registered_count}명 포함)
+                          </span>
+                        )}
                       </span>
                     </div>
                     
@@ -363,21 +373,21 @@ const ApplicationSection: React.FC = () => {
                   
                   <button
                     onClick={() => openModal(session)}
-                    disabled={isFull || !isRegistrationOpen}
+                    disabled={isWebApplicationFull || !isRegistrationOpen}
                     className={`w-full font-semibold py-3 px-4 rounded-lg transition-all duration-300 ${
-                      isFull 
+                      isWebApplicationFull 
                         ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
                         : !isRegistrationOpen
                         ? 'bg-yellow-600/50 text-yellow-200 cursor-not-allowed'
                         : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white'
                     }`}
                   >
-                    {isFull ? '마감' : !isRegistrationOpen ? '오픈 예정' : '신청하기'}
+                    {isWebApplicationFull ? '마감' : !isRegistrationOpen ? '오픈 예정' : '신청하기'}
                   </button>
-                  {isFull && (
+                  {isWebApplicationFull && (
                     <div className="mt-3 space-y-2">
                       <div className="text-center">
-                        <span className="text-xs text-red-400">참여 인원이 마감되었습니다</span>
+                        <span className="text-xs text-red-400">홈페이지 신청이 마감되었습니다</span>
                       </div>
                       <button
                         onClick={() => openWaitlistModal(session)}
@@ -387,7 +397,7 @@ const ApplicationSection: React.FC = () => {
                       </button>
                     </div>
                   )}
-                  {!isRegistrationOpen && !isFull && (
+                  {!isRegistrationOpen && !isWebApplicationFull && (
                     <div className="mt-2 text-center">
                       <span className="text-xs text-yellow-400">신청 오픈까지 기다려주세요</span>
                     </div>

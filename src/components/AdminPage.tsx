@@ -21,6 +21,7 @@ const AdminPage: React.FC = () => {
     time: '',
     location: '',
     max_participants: 10,
+    pre_registered_count: 0,
     registration_open_date: '',
     image_url: '',
     chat_link: ''
@@ -117,6 +118,7 @@ const AdminPage: React.FC = () => {
         time: '',
         location: '',
         max_participants: 10,
+        pre_registered_count: 0,
         registration_open_date: '',
         image_url: '',
         chat_link: ''
@@ -143,6 +145,7 @@ const AdminPage: React.FC = () => {
           time: newSession.time,
           location: newSession.location,
           max_participants: newSession.max_participants,
+          pre_registered_count: newSession.pre_registered_count,
           registration_open_date: newSession.registration_open_date || null,
           image_url: newSession.image_url,
           chat_link: newSession.chat_link || null
@@ -159,6 +162,7 @@ const AdminPage: React.FC = () => {
         time: '',
         location: '',
         max_participants: 10,
+        pre_registered_count: 0,
         registration_open_date: '',
         image_url: '',
         chat_link: ''
@@ -182,6 +186,7 @@ const AdminPage: React.FC = () => {
       time: session.time,
       location: session.location,
       max_participants: session.max_participants,
+      pre_registered_count: session.pre_registered_count || 0,
       registration_open_date: session.registration_open_date ? toKoreanTime(session.registration_open_date).toISOString().slice(0, 16) : '',
       image_url: session.image_url || '',
       chat_link: session.chat_link || ''
@@ -848,6 +853,23 @@ const AdminPage: React.FC = () => {
                 
                 <div>
                   <label className="block text-white text-sm font-medium mb-2">
+                    👥 사전 신청자 수
+                  </label>
+                  <input
+                    type="number"
+                    value={newSession.pre_registered_count}
+                    onChange={(e) => setNewSession({...newSession, pre_registered_count: parseInt(e.target.value) || 0})}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                    min="0"
+                    max={newSession.max_participants}
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    홈페이지 외부에서 이미 신청한 참여자 수입니다. 실제 신청 가능 인원은 (최대 참여자 수 - 사전 신청자 수)로 계산됩니다.
+                  </p>
+                </div>
+                
+                <div>
+                  <label className="block text-white text-sm font-medium mb-2">
                     📅 신청 오픈 예정일시
                   </label>
                   <input
@@ -954,6 +976,7 @@ const AdminPage: React.FC = () => {
                         time: '',
                         location: '',
                         max_participants: 10,
+                        pre_registered_count: 0,
                         registration_open_date: '',
                         image_url: '',
                         chat_link: ''
@@ -1033,7 +1056,12 @@ const AdminPage: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2 text-gray-300">
                       <Users className="w-4 h-4" />
-                      {session.current_participants}/{session.max_participants}
+                      {(session.current_participants || 0) + (session.pre_registered_count || 0)}/{session.max_participants}
+                      {(session.pre_registered_count || 0) > 0 && (
+                        <span className="text-xs text-blue-400 ml-1">
+                          (사전 {session.pre_registered_count}명)
+                        </span>
+                      )}
                     </div>
                   </div>
                   
